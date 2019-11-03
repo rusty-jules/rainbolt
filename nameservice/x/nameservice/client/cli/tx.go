@@ -22,31 +22,32 @@ func GetTxCmd(storeKey string, cdc *codec.Codec) *cobra.Command {
 	}
 
 	nameserviceTxCmd.AddCommand(client.PostCommands(
-		GetCmdBuyName(cdc),
-		GetCmdSetName(cdc),
-		GetCmdDeleteName(cdc),
+		GetCmdCreateOrder(cdc),
 	)...)
 
 	return nameserviceTxCmd
 }
 
-// GetCmdBuyName is the CLI command for sending a BuyName transaction
-func GetCmdBuyName(cdc *codec.Codec) *cobra.Command {
+func GetCmdCreateOrder(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:   "buy-name [name] [amount]",
-		Short: "bid for existing name or claim new name",
-		Args:  cobra.ExactArgs(2),
+		Use:   "create-order [channel_state] [channel_token] [amount]",
+		Short: "create an order and place funds in escrow",
+		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
 
-			coins, err := sdk.ParseCoins(args[1])
+			coins, err := sdk.ParseCoins(args[2])
 			if err != nil {
 				return err
 			}
 
-			msg := types.NewMsgBuyName(args[0], coins, cliCtx.GetFromAddress())
+			// var blsPubKey, commitPubKey types.Bls12381PubKey // [96]byte
+			// copy(blsPubKey[:], []byte(args[0]))
+			// copy(commitPubKey[:], []byte(args[1]))
+
+			msg := types.NewMsgCreateOrder(cliCtx.GetFromAddress(), args[0], args[1], coins)
 			err = msg.ValidateBasic()
 			if err != nil {
 				return err
@@ -57,52 +58,8 @@ func GetCmdBuyName(cdc *codec.Codec) *cobra.Command {
 	}
 }
 
-// GetCmdSetName is the CLI command for sending a SetName transaction
-func GetCmdSetName(cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "set-name [name] [value]",
-		Short: "set the value associated with a name that you own",
-		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
-
-			// if err := cliCtx.EnsureAccountExists(); err != nil {
-			// 	return err
-			// }
-
-			msg := types.NewMsgSetName(args[0], args[1], cliCtx.GetFromAddress())
-			err := msg.ValidateBasic()
-			if err != nil {
-				return err
-			}
-
-			// return utils.CompleteAndBroadcastTxCLI(txBldr, cliCtx, msgs)
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
-		},
-	}
-}
-
-// GetCmdDeleteName is the CLI command for sending a DeleteName transaction
-func GetCmdDeleteName(cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "delete-name [name]",
-		Short: "delete the name that you own along with it's associated fields",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-
-			txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
-
-			msg := types.NewMsgDeleteName(args[0], cliCtx.GetFromAddress())
-			err := msg.ValidateBasic()
-			if err != nil {
-				return err
-			}
-
-			// return utils.CompleteAndBroadcastTxCLI(txBldr, cliCtx, msgs)
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
-		},
-	}
-}
+// func GetCmdFillOrder(cdc *codec.Codec) *cobra.Command {
+// 	return &cobra.Command{
+// 		Use: "fill-order "
+// 	},
+// }
