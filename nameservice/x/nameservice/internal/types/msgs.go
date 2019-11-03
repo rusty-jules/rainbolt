@@ -136,3 +136,118 @@ func (msg MsgDeleteName) GetSignBytes() []byte {
 func (msg MsgDeleteName) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{msg.Owner}
 }
+
+///////////////////////////////////
+type MsgCreateOrder struct {
+	Merchant     sdk.AccAddress `json:"merchant"`
+	ChannelState string         `json:"channelState"`
+	ChannelToken string         `json:"channelToken"`
+	Amount       sdk.Coins      `json:"amount"`
+}
+
+// NewMsgCreateOrder is a constructor
+func NewMsgCreateOrder(merchant sdk.AccAddress, channelState string, channelToken string, amount sdk.Coins) MsgCreateOrder {
+	// TODO incorporate all the things from rainboltd message
+	return MsgCreateOrder{
+		Merchant:     merchant,
+		ChannelState: channelState,
+		ChannelToken: channelToken,
+		Amount:       amount,
+	}
+}
+
+// Route should return the name of the module
+func (msg MsgCreateOrder) Route() string { return RouterKey }
+
+// Type should return the action
+func (msg MsgCreateOrder) Type() string { return "create_order" }
+
+// ValidateBasic checks that the ChannelState is a valid Bls12381 public key and that Amount > 0
+func (msg MsgCreateOrder) ValidateBasic() sdk.Error {
+	if msg.Merchant.Empty() {
+		return sdk.ErrInvalidAddress(msg.Merchant.String())
+	}
+	// var sigBytes Bls12381PubKey
+	// copy(sigBytes[:], msg.ChannelState)
+	// _, err := g2pubs.DeserializePublicKey(sigBytes)
+	// if err != nil {
+	// 	return sdk.ErrInvalidPubKey(fmt.Sprintf("%s", msg.ChannelState))
+	// }
+	if msg.Amount.Empty() {
+		return sdk.ErrInsufficientCoins("Amount must be greater than 0")
+	}
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (msg MsgCreateOrder) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(msg))
+}
+
+// GetSigners defines whose signature is required and whose funds will be moved into escrow
+func (msg MsgCreateOrder) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{msg.Merchant}
+}
+
+// MsgFillOrder defines a FillOrder message
+type MsgFillOrder struct {
+	Customer sdk.AccAddress `json:"customer"`
+	// Currently used to lookup the escrow in the KV. Should be obfuscated (and not used as a key)
+	// in the future for privacy
+	Merchant sdk.AccAddress `json:"merchant"`
+	// Used to verify that Merchant and Customer are talking on the same channel
+	WalletCommit []byte    `json:"walletCommit"` // 96 bytes
+	Amount       sdk.Coins `json:"amount"`
+}
+
+// NewMsgCreateOrder is a constructor
+func NewMsgFillOrder(merchant sdk.AccAddress, customer sdk.AccAddress, walletCommit []byte, amount sdk.Coins) MsgFillOrder {
+	// TODO incorporate all the things from rainboltd message
+	return MsgFillOrder{
+		Merchant:     merchant,
+		Customer:     customer,
+		WalletCommit: walletCommit,
+		Amount:       amount,
+	}
+}
+
+// Route should return the name of the module
+func (msg MsgFillOrder) Route() string { return RouterKey }
+
+// Type should return the action
+func (msg MsgFillOrder) Type() string { return "fill_order" }
+
+// ValidateBasic checks that the ChannelState is a valid Bls12 public key, Amount > 0, and addresses are not empty
+func (msg MsgFillOrder) ValidateBasic() sdk.Error {
+	if msg.Customer.Empty() {
+		return sdk.ErrInvalidAddress(msg.Customer.String())
+	}
+
+	if msg.Merchant.Empty() {
+		return sdk.ErrInvalidAddress(msg.Merchant.String())
+	}
+	// var sigBytes Bls12381PubKey
+	// copy(sigBytes[:], msg.ChannelState)
+	// _, err := g2pubs.DeserializePublicKey(sigBytes)
+	// if err != nil {
+	// 	return sdk.ErrInvalidPubKey(fmt.Sprintf("%s", msg.ChannelState))
+	// }
+	if msg.Amount.Empty() {
+		return sdk.ErrInsufficientCoins("Amount must be greater than 0")
+	}
+	return nil
+}
+
+// GetSignBytes encodes the message for signing
+func (msg MsgFillOrder) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(msg))
+}
+
+// GetSigners defines whose signature is required and whose funds will be moved into escrow
+func (msg MsgFillOrder) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{msg.Customer}
+}
+
+// MsgClaimOrder defines a ClaimOrder message
+type MsgClaimOrder struct {
+}

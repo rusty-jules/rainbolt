@@ -104,3 +104,73 @@ func (k Keeper) IsNamePresent(ctx sdk.Context, name string) bool {
 	store := ctx.KVStore(k.storeKey)
 	return store.Has([]byte(name))
 }
+
+// SetEscrow an escrow account. Currently uses the sender address (which means only one escrow account per user) as a key. This should be changed (and obfuscated) in a clever way
+func (k Keeper) SetEscrow(ctx sdk.Context, senderAddress string, escrow types.Escrow) {
+	if escrow.Amount.Empty() {
+		return
+	}
+	store := ctx.KVStore(k.storeKey)
+	store.Set([]byte(senderAddress), k.cdc.MustMarshalBinaryBare(escrow))
+}
+
+// Get the Escrow data for a sender address
+// func (k Keeper) GetEscrow(ctx sdk.Context, senderAddress string) Escrow {
+// 	store := ctx.KVStore(k.storeKey)
+// 	if !k.IsEscrowPresent(ctx, senderAddress) {
+// 		return NewEscrow() // FIXME, maybe throw error?
+// 	}
+// }
+
+// IsEscrowPresent checks if an Escrow account exists for the given sender address
+func (k Keeper) IsEscrowPresent(ctx sdk.Context, senderAddress string) bool {
+	store := ctx.KVStore(k.storeKey)
+	return store.Has([]byte(senderAddress))
+}
+
+// IsEscrowFilled checks if an Escrow account has been filled
+func (k Keeper) IsEscrowFilled(ctx sdk.Context, senderAddress string) bool {
+	return k.GetEscrow(ctx, senderAddress).Filled
+}
+
+// GetEscrow returns an escrow account given a key
+func (k Keeper) GetEscrow(ctx sdk.Context, senderAddress string) types.Escrow {
+	store := ctx.KVStore(k.storeKey)
+	if !k.IsEscrowPresent(ctx, senderAddress) {
+		return types.NewEscrow()
+	}
+	binary := store.Get([]byte(senderAddress))
+	var escrow types.Escrow
+	k.cdc.MustUnmarshalBinaryBare(binary, &escrow)
+	return escrow
+}
+
+// GetEscrowSize returns an escrows contract size
+func (k Keeper) GetEscrowSize(ctx sdk.Context, senderAddress string) sdk.Int {
+	escrow := k.GetEscrow(ctx, senderAddress)
+	if escrow.Filled {
+		return escrow.Amount[0].Amount.QuoRaw(2)
+	}
+	return escrow.Amount[0].Amount
+}
+
+// GetEscrowDenom returns an escrows denomination
+func (k Keeper) GetEscrowDenom(ctx sdk.Context, senderAddress string) string {
+	return k.GetEscrow(ctx, senderAddress).Amount[0].Denom
+}
+
+// SetCustomer adds a customer to the escrow account
+func (k Keeper) SetCustomer(ctx sdk.Context, senderAddress string, customer sdk.AccAddress, walletCommit []byte, coins sdk.Coins) {
+	escrow := k.GetEscrow(ctx, senderAddress)
+	escrow.Customer = customer
+	escrow.WalletCommit = walletCommit
+	escrow.Amount.Add(coins)
+	escrow.Filled = true
+	k.SetEscrow(ctx, senderAddress, escrow)
+}
+
+// GetAllEscrows lets you see all "orders" on chain
+func (k Keeper) GetAllEscrows(ctx sdk.Context) sdk.Iterator {
+	store := ctx.KVStore(k.storeKey)
+	return sdk.KVStorePrefixIterator(store, []byte{})
+}

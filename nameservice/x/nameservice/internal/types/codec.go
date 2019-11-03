@@ -16,4 +16,6 @@ func RegisterCodec(cdc *codec.Codec) {
 	cdc.RegisterConcrete(MsgSetName{}, "nameservice/SetName", nil)
 	cdc.RegisterConcrete(MsgBuyName{}, "nameservice/BuyName", nil)
 	cdc.RegisterConcrete(MsgDeleteName{}, "nameservice/DeleteName", nil)
+	cdc.RegisterConcrete(MsgCreateOrder{}, "escrow/CreateOrder", nil)
+	cdc.RegisterConcrete(MsgFillOrder{}, "escrow/FillOrder", nil)
 }

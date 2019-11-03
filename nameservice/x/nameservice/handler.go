@@ -18,6 +18,10 @@ func NewHandler(keeper Keeper) sdk.Handler {
 			return handleMsgBuyName(ctx, keeper, msg)
 		case MsgDeleteName:
 			return handleMsgDeleteName(ctx, keeper, msg)
+		case MsgCreateOrder:
+			return handleMsgCreateOrder(ctx, keeper, msg)
+		case MsgFillOrder:
+			return handleMsgFillOrder(ctx, keeper, msg)
 		default:
 			errMsg := fmt.Sprintf("Unrecognized nameservice Msg type: %v", msg.Type())
 			return sdk.ErrUnknownRequest(errMsg).Result()
@@ -66,5 +70,89 @@ func handleMsgDeleteName(ctx sdk.Context, keeper Keeper, msg MsgDeleteName) sdk.
 	}
 
 	keeper.DeleteWhois(ctx, msg.Name)
+	return sdk.Result{}
+}
+
+// Handle a message to create an order
+func handleMsgCreateOrder(ctx sdk.Context, keeper Keeper, msg MsgCreateOrder) sdk.Result {
+	// 1. Check if the given BlsPubKey is valid
+	// 2. Check that the Merchant is only putting up a single denomination
+	// 3. Check if the Merchant already has an escrow account (should get deprecated)
+	// 4. Check if the Merchant has the necessary funds to escrow
+	// 5. Store Merchant funds in the KV
+	// var sigBytes Bls12381PubKey
+	// copy(sigBytes[:], msg.Owner)
+	// if !ValidatePubKey(sigBytes) {
+	// 	return sdk.ErrInvalidPubKey("Invalid BLS public key").Result()
+	// }
+
+	if msg.Amount.Len() != 1 {
+		return sdk.ErrInternal("Incorrect number of denominations. Must be 1").Result()
+	}
+
+	if keeper.IsEscrowPresent(ctx, msg.Merchant.String()) {
+		return sdk.ErrInternal("Merchant already has one escrow. Currently only one is supported at a time.").Result()
+	}
+
+	coins, err := keeper.CoinKeeper.SubtractCoins(ctx, msg.Merchant, msg.Amount)
+	if err != nil {
+		return sdk.ErrInsufficientCoins("Merchant does not have enough coins to escrow").Result()
+	}
+
+	keeper.SetEscrow(ctx, msg.Merchant.String(), Escrow{
+		Merchant:     msg.Merchant,
+		ChannelState: msg.ChannelState,
+		ChannelToken: msg.ChannelToken,
+		Amount:       coins,
+		Filled:       false,
+	})
+
+	return sdk.Result{}
+}
+
+// Handle a message to fill an order
+func handleMsgFillOrder(ctx sdk.Context, keeper Keeper, msg MsgFillOrder) sdk.Result {
+	// 1. Check if the given BlsPubKey is valid
+	// 2. Check if the escrow account exists
+	// 3. Check if the order has already been filled
+	// 4. Check that the amount and denomination put up by the Customer is correct
+	// 5. TODO Some stuff to store the correct keys in the escrow for claim
+	// 6. Store Customer funds in the KV
+	// var sigBytes Bls12381PubKey
+	// copy(sigBytes[:], msg.Owner)
+	// if !ValidatePubKey(sigBytes) {
+	// 	return sdk.ErrInvalidPubKey("Invalid BLS public key").Result()
+	// }
+
+	if msg.Amount.Len() != 1 {
+		return sdk.ErrInternal("Incorrect number of denominations. Must be 1").Result()
+	}
+
+	if !keeper.IsEscrowPresent(ctx, msg.Merchant.String()) {
+		return sdk.ErrInternal("Order does not exist. Merchant Escrow not found").Result()
+	}
+
+	escrow := keeper.GetEscrow(ctx, msg.Merchant.String())
+
+	if escrow.Filled {
+		return sdk.ErrInternal("Order has already been filled").Result()
+	}
+
+	if !msg.Amount.IsEqual(escrow.Amount) {
+		if !msg.Amount[0].Amount.Equal(escrow.Amount[0].Amount) {
+			return sdk.ErrInvalidCoins(fmt.Sprintf("Incorrect amount. Should be %s", escrow.Amount[0].String())).Result()
+		}
+		return sdk.ErrInvalidCoins(fmt.Sprintf("Incorrect coins. Escrow has %s", escrow.Amount.String())).Result()
+	}
+
+	// ---- TODO MuliSig Shizen ----
+
+	coins, err := keeper.CoinKeeper.SubtractCoins(ctx, msg.Customer, msg.Amount)
+	if err != nil {
+		return sdk.ErrInsufficientCoins("Customer does not have enough coins to fill order").Result()
+	}
+
+	// This SetEscrow could be done using the already-queried-for-escrow for one less read/deserialize, but whatever
+	keeper.SetCustomer(ctx, msg.Merchant.String(), msg.Customer, msg.WalletCommit, coins)
 	return sdk.Result{}
 }

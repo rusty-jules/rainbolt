@@ -13,6 +13,7 @@ const (
 	QueryResolve = "resolve"
 	QueryWhois   = "whois"
 	QueryNames   = "names"
+	QueryOrders  = "orders"
 )
 
 // NewQuerier is the module level router for state queries
@@ -25,10 +26,37 @@ func NewQuerier(keeper Keeper) sdk.Querier {
 			return queryWhois(ctx, path[1:], req, keeper)
 		case QueryNames:
 			return queryNames(ctx, req, keeper)
+		case QueryOrders:
+			return queryOrders(ctx, path[1:], req, keeper)
 		default:
 			return nil, sdk.ErrUnknownRequest("unknown nameservice query endpoint")
 		}
 	}
+}
+
+// nolint: unparam
+func queryOrders(ctx sdk.Context, path []string, req abci.RequestQuery, k Keeper) ([]byte, sdk.Error) {
+	// var escrows [][]byte
+	var escrows []types.Escrow
+	itr := k.GetAllEscrows(ctx)
+	defer itr.Close()
+
+	for ; itr.Valid(); itr.Next() {
+		// key := itr.Key()
+		escrowBinary := itr.Value()
+		// escrows[i] = escrowBinary
+		var escrow types.Escrow
+		k.cdc.MustUnmarshalBinaryBare(escrowBinary, &escrow)
+
+		escrows = append(escrows, escrow)
+	}
+	// return k.cdc.MustMarshalBinaryBare(escrows), nil
+	res, err := codec.MarshalJSONIndent(k.cdc, escrows)
+	if err != nil {
+		panic("could not marshal orders query result to JSON")
+	}
+
+	return res, nil
 }
 
 // nolint: unparam

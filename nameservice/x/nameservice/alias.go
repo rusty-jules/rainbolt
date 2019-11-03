@@ -17,9 +17,14 @@ var (
 	NewMsgBuyName    = types.NewMsgBuyName
 	NewMsgSetName    = types.NewMsgSetName
 	NewMsgDeleteName = types.NewMsgDeleteName
-	NewWhois         = types.NewWhois
-	ModuleCdc        = types.ModuleCdc
-	RegisterCodec    = types.RegisterCodec
+
+	NewMsgCreateOrder = types.NewMsgCreateOrder
+	NewMsgFillOrder   = types.NewMsgFillOrder
+	NewEscrow         = types.NewEscrow
+
+	NewWhois      = types.NewWhois
+	ModuleCdc     = types.ModuleCdc
+	RegisterCodec = types.RegisterCodec
 )
 
 type (
@@ -29,5 +34,11 @@ type (
 	MsgDeleteName   = types.MsgDeleteName
 	QueryResResolve = types.QueryResResolve
 	QueryResNames   = types.QueryResNames
-	Whois           = types.Whois
+
+	MsgCreateOrder = types.MsgCreateOrder
+	MsgFillOrder   = types.MsgFillOrder
+	QueryResOrder  = types.QueryResOrders
+	Escrow         = types.Escrow
+
+	Whois = types.Whois
 )

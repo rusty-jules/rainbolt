@@ -225,7 +225,7 @@ func NewNameServiceApp(
 		supply.ModuleName,
 		genutil.ModuleName,
 	)
-
+	logger.Info("666NAMESERVICE STORENAME", nameservice.ModuleName, nameservice.StoreKey)
 	// register all module routes and module queriers
 	app.mm.RegisterRoutes(app.Router(), app.QueryRouter())
 

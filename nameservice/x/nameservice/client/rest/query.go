@@ -42,12 +42,26 @@ func whoIsHandler(cliCtx context.CLIContext, storeName string) http.HandlerFunc 
 }
 
 func namesHandler(cliCtx context.CLIContext, storeName string) http.HandlerFunc {
+	// panic("BLAAAH")
 	return func(w http.ResponseWriter, r *http.Request) {
 		res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/%s/names", storeName), nil)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadGateway, err.Error())
+			return
+		}
+		rest.PostProcessResponse(w, cliCtx, res)
+	}
+}
+
+func ordersHandler(cliCtx context.CLIContext, storeName string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/%s/orders", storeName), nil)
 		if err != nil {
 			rest.WriteErrorResponse(w, http.StatusNotFound, err.Error())
 			return
 		}
+
 		rest.PostProcessResponse(w, cliCtx, res)
 	}
 }
